@@ -29,7 +29,8 @@ System prompt leakage occurs when an LLM application inadvertently reveals inter
 #### Semgrep Rules
 
 ```bash
-semgrep --config semgrep-rules/llm07-system-prompt-leakage.yaml ../vulnerable-app
+cd detection
+semgrep --config semgrep-rules/rules.yaml ../vulnerable-app
 ```
 
 ## Customizing Rules
