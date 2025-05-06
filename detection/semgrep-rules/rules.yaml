@@ -1,0 +1,221 @@
+rules:
+  # LLM07: System Prompt Leakage rules
+  - id: direct-string-concatenation-with-user-input
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $PROMPT = $SYSTEM_PROMPT + ... + $USER_INPUT
+          - pattern: |
+              $PROMPT = $SYSTEM_PROMPT + "..." + $USER_INPUT
+          - pattern: |
+              $PROMPT = f"...{$SYSTEM_PROMPT}...{$USER_INPUT}..."
+          - pattern: |
+              $PROMPT += f"...{$USER_INPUT}..."
+          - pattern: |
+              $PROMPT = "..." + $SYSTEM_PROMPT + "..." + $USER_INPUT + "..."
+    message: >
+      Potential system prompt leakage vulnerability detected. 
+      Direct string concatenation of system prompts with user input enables prompt injection attacks.
+      Consider using a secure prompt construction method with proper isolation.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      owasp: "OWASP LLM07: System Prompt Leakage"
+      remediation: >
+        Use proper prompt isolation techniques such as clear boundary markers between 
+        system instructions and user inputs, or a structured prompt format like using 
+        role-based message objects instead of string concatenation.
+        
+  - id: missing-user-input-validation-for-prompt
+    patterns:
+      - pattern-not: |
+          if ... in $USER_INPUT: ...
+      - pattern-not: |
+          if $USER_INPUT.contains(...): ...
+      - pattern-not: |
+          if $VALIDATOR($USER_INPUT): ...
+      - pattern-not: |
+          $SANITIZED = $SANITIZE_FUNC($USER_INPUT)
+      - pattern-either:
+          - pattern: |
+              $PROMPT = $SYSTEM_PROMPT + ... + $USER_INPUT
+          - pattern: |
+              $PROMPT = f"...{$SYSTEM_PROMPT}...{$USER_INPUT}..."
+          - pattern: |
+              $PROMPT += f"...{$USER_INPUT}..."
+    message: >
+      Missing validation for user input before including it in a prompt.
+      User inputs should be validated to prevent prompt injection attacks.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      owasp: "OWASP LLM07: System Prompt Leakage"
+      remediation: >
+        Implement input validation to detect and block potential prompt injection attempts.
+        This can include pattern matching, embedding-based classification, or multi-turn attack detection.
+        
+  - id: sensitive-info-in-system-prompt
+    pattern-regex: '(password|secret|credential|api_key|token|db_password|db_user).*=.*[''"][^''"\s]+[''"]'
+    paths:
+      include:
+        - '*.py'
+    message: >
+      Potential sensitive information found in system prompt.
+      Avoid including secrets, credentials, or sensitive information in system prompts.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-312: Cleartext Storage of Sensitive Information"
+      owasp: "OWASP LLM07: System Prompt Leakage"
+      remediation: >
+        Remove sensitive information from system prompts. Store secrets and credentials
+        securely in environment variables or secure vaults and reference them indirectly if needed.
+        
+  - id: missing-llm-response-validation
+    patterns:
+      - pattern-not: |
+          $RESPONSE = $VALIDATE_FUNC($LLM_RESPONSE)
+      - pattern-not: |
+          if $PATTERN in $LLM_RESPONSE: ...
+      - pattern-not: |
+          if $CHECK_FUNC($LLM_RESPONSE): ...
+      - pattern: |
+          return $LLM_RESPONSE
+    message: >
+      Missing validation for LLM responses before returning them to users.
+      Responses should be checked to prevent system information leakage.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-209: Information Exposure Through an Error Message"
+      owasp: "OWASP LLM07: System Prompt Leakage"
+      remediation: >
+        Implement response validation to detect and redact any leakage of system 
+        prompt information before returning responses to users. Consider using 
+        pattern matching or AI-based techniques to detect potential leaks.
+        
+  - id: insecure-prompt-construction-method
+    pattern: |
+      def construct_prompt(...):
+        ...
+        $PROMPT = $SYSTEM_PROMPT + ...
+        ...
+        return $PROMPT
+    message: >
+      Insecure prompt construction method detected.
+      The function builds prompts by directly concatenating system prompts with other content.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      owasp: "OWASP LLM07: System Prompt Leakage"
+      remediation: >
+        Refactor to use more secure prompt construction patterns with proper isolation
+        between system instructions and user inputs. Use structured messaging formats
+        that keep system instructions separate from user inputs.
+  
+  # LLM01: Prompt Injection rules
+  - id: missing-input-sanitization
+    patterns:
+      - pattern-not: |
+          $INPUT = $SANITIZE_FUNC($USER_INPUT)
+      - pattern-not: |
+          if $VALIDATOR($USER_INPUT): ...
+      - pattern: |
+          $LLM_PROMPT = f"...{$USER_INPUT}..."
+    message: >
+      Missing input sanitization before sending user input to an LLM.
+      This can enable prompt injection attacks.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-74: Improper Neutralization of Special Elements in Output"
+      owasp: "OWASP LLM01: Prompt Injection"
+      remediation: >
+        Implement input validation and sanitization to detect potentially malicious inputs.
+        Consider using a structured message format instead of string templates.
+  
+  - id: unvalidated-user-input-in-prompt
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $PROMPT = "..." + $USER_INPUT + "..."
+          - pattern: |
+              $PROMPT += $USER_INPUT
+          - pattern: |
+              $PROMPT = f"...{$USER_INPUT}..."
+    message: >
+      Unvalidated user input directly included in prompt.
+      This can lead to prompt injection vulnerabilities.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      owasp: "OWASP LLM01: Prompt Injection"
+      remediation: >
+        Validate and sanitize user inputs before incorporating them into prompts.
+        Use structured formats that clearly separate system instructions from user inputs.
+  
+  # LLM05: Improper Output Handling rules
+  - id: llm-direct-execution-of-output
+    patterns:
+      - pattern-either:
+          - pattern: |
+              exec($LLM_OUTPUT, ...)
+          - pattern: |
+              eval($LLM_OUTPUT, ...)
+          - pattern: |
+              subprocess.run($LLM_OUTPUT, ...)
+          - pattern: |
+              os.system($LLM_OUTPUT)
+          - pattern: |
+              exec(f"...{$LLM_OUTPUT}...", ...)
+          - pattern: |
+              eval(f"...{$LLM_OUTPUT}...", ...)
+    message: >
+      Direct execution of LLM-generated output detected.
+      This is a high-risk pattern that can lead to remote code execution.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code"
+      owasp: "OWASP LLM05: Improper Output Handling"
+      remediation: >
+        Never execute LLM outputs directly. If code execution is necessary, implement strict
+        sandboxing, validation, and execution limits. Consider using safer alternatives like
+        pre-defined templates with limited parameters.
+  
+  - id: unchecked-package-installation
+    patterns:
+      - pattern-either:
+          - pattern: |
+              subprocess.run("pip install $PACKAGE", ...)
+          - pattern: |
+              os.system("pip install $PACKAGE")
+          - pattern: |
+              subprocess.run(f"pip install {$PACKAGE}", ...)
+          - pattern: |
+              os.system(f"pip install {$PACKAGE}")
+    message: >
+      Unchecked package installation detected.
+      Installing packages without validation can lead to supply chain attacks.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+      owasp: "OWASP LLM05: Improper Output Handling"
+      remediation: >
+        Use a whitelist of approved packages, validate package sources, and implement
+        integrity checks before installation. Consider using virtual environments or
+        containers to isolate package installations.

@@ -1,0 +1,106 @@
+rules:
+  - id: llm-direct-execution-of-output
+    patterns:
+      - pattern-either:
+          - pattern: |
+              exec($LLM_OUTPUT, ...)
+          - pattern: |
+              eval($LLM_OUTPUT, ...)
+          - pattern: |
+              subprocess.run($LLM_OUTPUT, ...)
+          - pattern: |
+              os.system($LLM_OUTPUT)
+    message: >
+      Direct execution of LLM-generated output detected.
+      This is a high-risk pattern that can lead to remote code execution.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code"
+      owasp: "OWASP LLM05: Improper Output Handling"
+      
+  - id: unchecked-package-installation
+    patterns:
+      - pattern-either:
+          - pattern: |
+              subprocess.run("pip install $PACKAGE", ...)
+          - pattern: |
+              os.system("pip install $PACKAGE")
+          - pattern: |
+              subprocess.run(f"pip install {$PACKAGE}", ...)
+    message: >
+      Unchecked package installation detected.
+      Installing packages without validation can lead to supply chain attacks.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+      owasp: "OWASP LLM05: Improper Output Handling"
+      
+  - id: missing-input-sanitization
+    patterns:
+      - pattern-not: |
+          $INPUT = $SANITIZE_FUNC($USER_INPUT)
+      - pattern-not: |
+          if $VALIDATOR($USER_INPUT): ...
+      - pattern: |
+          $LLM_PROMPT = f"...{$USER_INPUT}..."
+    message: >
+      Missing input sanitization before sending user input to an LLM.
+      This can enable prompt injection attacks.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-74: Improper Neutralization of Special Elements in Output"
+      owasp: "OWASP LLM01: Prompt Injection"
+      
+  - id: hardcoded-llm-api-keys
+    pattern-regex: '(openai\.api_key|openai_api_key|api_key|OPENAI_API_KEY)\s*=\s*[''"]([A-Za-z0-9\-_]{20,})[''"]'
+    paths:
+      include:
+        - '*.py'
+    message: >
+      Hardcoded LLM API key detected.
+      API keys should be stored securely, not in source code.
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      owasp: "OWASP LLM08: Excessive Agency"
+      
+  - id: unsafe-model-configuration
+    patterns:
+      - pattern-either:
+          - pattern: |
+              temperature=1.0
+          - pattern: |
+              temperature=2.0
+          - pattern: |
+              top_p=1
+    message: >
+      Potentially unsafe LLM model configuration detected.
+      High temperature or top_p settings can lead to less predictable outputs.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-693: Protection Mechanism Failure"
+      owasp: "OWASP LLM03: Training Data Poisoning"
+      
+  - id: unvalidated-llm-input-to-dangerous-operation
+    patterns:
+      - pattern: |
+          $FUNC($LLM_OUTPUT, ...)
+    message: >
+      Unvalidated LLM output used in potentially dangerous operations.
+      Validate and sanitize LLM outputs before using them in operations.
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      owasp: "OWASP LLM05: Improper Output Handling" 
