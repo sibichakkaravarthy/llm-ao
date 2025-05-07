@@ -104,4 +104,4 @@ This will:
 - [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
 - [Prompt Injection: Real World LLM Security Vulnerabilities](https://github.com/OWASP/www-project-top-10-for-large-language-model-applications/tree/main/LLM07_Prompt_Injection)
 - [Best Practices for System Prompt Security](https://gist.github.com/coolaj86/6f4f7b30129b0251f61fa7baaa881516)
-- [Detection Mechanisms Analysis Guide](./detection/ANALYSIS.md)
+- [Detection Mechanisms Analysis Guide](./detection/ANALYSIS.md)   
