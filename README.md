@@ -22,7 +22,7 @@ The vulnerable application demonstrates:
 
 ### 2. Secure Application
 
-The secure variant implements:
+The secure variant implements:  
 - Input/output sanitization to prevent prompt injection
 - Prompt isolation techniques to separate system context from user inputs
 - Embedding-based classification to detect and reject suspicious input patterns
